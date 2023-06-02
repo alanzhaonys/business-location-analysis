@@ -2,25 +2,28 @@
 ## <span style="color: #606060;">Find Your Perfect Business Location Using AWS QuickSight and CloudFormation</span>
 
 ### Intro
-In this article I will show you how to use AWS QuickSight and CloudFormation to generate analysis reports, in this case using real world deomgraphics and business directory data to analyse and recommend optimal business locations for your next venture.
+In this article I will show you how to use AWS QuickSight and CloudFormation to generate analysis reports. I will be using real world deomgraphics and business directory data to analyse and recommend optimal business locations for your next venture.
 
-Below is a preview of the report will be generated. To see the full version, [click here](preview.pdf).
+Below is a preview of the report generated. To see the full version, [click here](preview.pdf).
 
 ![Preview diagram](img/preview.png)
 
 ### Diagram
+The infrastructure is as simple as below.
 ![Overview diagram](img/overview.png)
 
 ### The Goal
-Introuction to automate BI reports using QuickSight and Cloudformation. At the end of the article, you should be able to create your own repeatable, portable and managable reports.
+To give introuction to automate BI reports using QuickSight and Cloudformation. At the end of the article, you should be able to create your own repeatable, portable and managable reports with code.
+
+__To tell you [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business IS NOT THE GOAL.__
 
 ### Prerequsitis
-- Git and AWS skills
+- AWS skills
 - QuickSight Enterprise edition access
 
 ### Disclaimers
-- All the data used come from public sources, their accuracy are unknown
-- The formulas used to determine the optimal locations are not warranted. There are many other factors to consider, for example, urban characteristics, real estate and labor costs etc.
+- All the data used come from public sources, accuracy is not guaranteed
+- The [magic formulas](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L359) used to determine the optimal locations are not warranted. There are many other factors to consider, for example, urban characteristics, real estate and labor costs etc.
 - Privisioning the resources in AWS will incur costs
 
 ### Steps
@@ -147,10 +150,12 @@ You can absolutely create all the AWS resoure manually, but perhas next time you
 
 To be fair, there are a lot of CloudFormation code you have to write, it might not worth the time to do it this way. In my case, I can replicate the reports for variety of business types, it's totally worth it. Additionaly, keeping and tracking everything in code seems to be the better practice.
 
-__There are two ways to generate QuickSight reports with CloudFormation that I know of.__ You can ingore the sections below, they will make more sense after you take deep dive of using this methodology. 
+__There are two ways to generate QuickSight reports with CloudFormation that I know of.__ They will make more sense after you take deep dive of using this methodology. 
 
 #### Code analysis definitions manually
-Analysis definitions holds the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without a base analysis.
+Analysis definitions holds the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without a base analysis. This is the method I chose for this article. The [describe-analysis-definition](https://docs.aws.amazon.com/cli/latest/reference/quicksight/describe-analysis-definition.html) helped me a lot by providing majority of the `QuickSight::Definition` CloudFormation context from an existing analysis as guidelines.
+
+Take a look at the `QuickSight::Definition` use in this article [here](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L958).
 
 #### Derive from a maually created analysis
 1. Create a template from the base analysis using [create-template](https://docs.aws.amazon.com/cli/latest/reference/quicksight/create-template.html) CLI. There is no option to do it from the console
@@ -163,7 +168,8 @@ Analysis definitions holds the information about fields, filters, parameters and
 
 __OMG! There are lot of hoops you have to go through.__ I hope AWS can make it easier. One of the caveats is you always have to keep the base analysis and template because that's where dervied analyses get the information like fields, filters, parameter and layouts from.
 
-
+### Feedback
+Please reach out to me directly on the platform if you have any feedback.
 
 ### Credits
 - [Automate deployment of an Amazon QuickSight analysis connecting to an Amazon Redshift data warehouse with an AWS CloudFormation template](https://aws.amazon.com/blogs/big-data/automate-deployment-of-an-amazon-quicksight-analysis-connecting-to-an-amazon-redshift-data-warehouse-with-an-aws-cloudformation-template/)
