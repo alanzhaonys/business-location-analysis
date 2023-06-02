@@ -2,9 +2,9 @@
 ## <span style="color: #606060;">Find Your Perfect Business Location Using AWS QuickSight and CloudFormation</span>
 
 ### Intro
-In this article I will show you how to use AWS QuickSight and CloudFormation to generate analysis reports. I will be using real world deomgraphics and business directory data to analyse and recommend optimal business locations for your next venture.
+In this article, I will show you how to use AWS QuickSight and CloudFormation to generate analysis reports. I will be using real-world demographics and business directory data to analyze and recommend optimal business locations for your next venture.
 
-Below is a preview of the report generated. To see the full version, [click here](preview.pdf).
+Below is a preview of the generated report. To see the full version, [click here](preview.pdf).
 
 ![Preview diagram](img/preview.png)
 
@@ -13,18 +13,18 @@ The infrastructure is as simple as below.
 ![Overview diagram](img/overview.png)
 
 ### The Goal
-To give introuction to automate BI reports using QuickSight and Cloudformation. At the end of the article, you should be able to create your own repeatable, portable and managable reports with code.
+The goal is to give an introduction to automating BI reports using QuickSight and CloudFormation with an example. By the end of the article, you should be able to understand how to create your own repeatable, portable, and manageable reports with code.
 
-__To tell you [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business IS NOT THE GOAL.__
+__The goal is not to tell you that [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business.__
 
-### Prerequsitis
+### Prerequisites
 - AWS skills
 - QuickSight Enterprise edition access
 
 ### Disclaimers
-- All the data used come from public sources, accuracy is not guaranteed
-- The [magic formulas](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L359) used to determine the optimal locations are not warranted. There are many other factors to consider, for example, urban characteristics, real estate and labor costs etc.
-- Privisioning the resources in AWS will incur costs
+- All the data used comes from public sources; accuracy is not guaranteed.
+- The [magic formulas](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L359) used to determine optimal locations are not warranted. There are many other factors to consider, such as urban characteristics, real estate, and labor costs, etc.
+- Provisioning the resources in AWS will incur costs.
 
 ### Steps
 
@@ -33,7 +33,7 @@ Let's begin!
 Check out the Git repository at [https://github.com/alanzhaonys/business-location-analysis](https://github.com/alanzhaonys/business-location-analysis)
 
 #### Repository Overview
-- `/data` - This directory contains all the data you will need to upload to your own S3 bucket
+- `/data` - This directory contains the data you need to upload to your own S3 bucket
   - Demographics CSV files
     - `zipcodes/zipcodes.csv`
     - `median_income/median_income.csv`
@@ -54,18 +54,18 @@ Create two S3 buckets, one to hold the raw data, another to hold the nested Clou
 
 Upload all files in `/data` *(not the directory itself)* to `s3://location-location-location`.
 
-You can either do it manually or use command below. *(Be sure to use your own S3 bucket, region and profile)*:
+You can either do it manually or use the command below. *(Be sure to use your own S3 bucket, region and profile)*:
 ```
 aws s3 sync "data" "s3://location-location-location" --delete --region "us-east-1" --profile default
 ```
 
 #### Preparations
-Get your QuickSight ARN. You will need to have QuickSight Enterprise subscription. Run command bleow.
+__Get your QuickSight ARN. You will need to have QuickSight Enterprise subscription. Run command below.__
 ```
 aws quicksight list-users --region <aws-region> --aws-account-id <account-id> --namespace <namespace-name>       
 ```
 
-Update the variables in `deploy.sh` script.
+__Update the variables in `deploy.sh` script.__
 ```
 #!/bin/bash
 
@@ -81,14 +81,16 @@ CLOUDFORMATION_BUCKET=[REPLACE-ME]
 ...
 ```
 
-Update the variables in `template.yaml` CloudFormation template.
+The deploy script will package, send packaged template to S3 and deploy to CloudFormation.
+
+__Update the variables in `template.yaml` CloudFormation template.__
 ```
 Parameters:
   AppName:
     Type: String
     Default: "nail-salon-location-analysis"
     Description: >-
-      The appplication name. This will become the Glue database and QuickSight analysis ID.
+      The application name. This will become the Glue database and QuickSight analysis ID.
 
   AppLongName:
     Type: String
@@ -100,7 +102,7 @@ Parameters:
     Type: String
     Default: "Nail Salon"
     Description: >-
-      Business name in sigular notion. This will show up in the QuickSight report.
+      Business name in singular notion. This will show up in the QuickSight report.
 
   BusinessNamePlural:
     Type: String
@@ -124,7 +126,7 @@ Parameters:
     Type: String
     Default: "your-quicksight-arn"
     Description: >-
-      The QuickSight ARN. You will need to subscribe to QuickSight Enterprise eition.
+      The QuickSight ARN. You will need to have QuickSight Enterprise subscription.
       Use this command to find out the ARN: 
         aws quicksight list-users --region <aws-region> --aws-account-id <account-id> --namespace <namespace-name>
 
@@ -146,14 +148,14 @@ Run `./deploy.sh` to deploy the CloudFormation template. Wait for few minutes fo
 ![Overview diagram](img/analysis.png)
 
 ### What's Next
-You can absolutely create all the AWS resoure manually, but perhas next time you create new reports, you will have an option to automate your workflow. This is especially helpful if you need to create multiple similar QuickSight reports or share them cross accounts.
+You can absolutely create all the AWS resources manually, but perhaps next time you create new reports, you will have an option to automate your workflow. This is especially helpful if you need to create multiple similar QuickSight reports or share them across accounts.
 
-To be fair, there are a lot of CloudFormation code you have to write, it might not worth the time to do it this way. In my case, I can replicate the reports for variety of business types, it's totally worth it. Additionaly, keeping and tracking everything in code seems to be the better practice.
+To be fair, there is a lot of CloudFormation code you have to write, so it might not be worth the time to do it this way. In my case, I can replicate the reports for a variety of business types, and it's totally worth it. Additionally, keeping and tracking everything in code seems to be the better practice.
 
-__There are two ways to generate QuickSight reports with CloudFormation that I know of.__ They will make more sense after you take deep dive of using this methodology. 
+There are two ways to generate QuickSight reports with CloudFormation that I know of. They will make more sense after you take a deep dive into using this methodology.
 
 #### Code analysis definitions manually
-Analysis definitions holds the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without a base analysis. This is the method I chose for this article. The [describe-analysis-definition](https://docs.aws.amazon.com/cli/latest/reference/quicksight/describe-analysis-definition.html) helped me a lot by providing majority of the `QuickSight::Definition` CloudFormation context from an existing analysis as guidelines.
+Analysis definitions hold the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without relying on a base analysis. This is the method I chose for this article. The [describe-analysis-definition](https://docs.aws.amazon.com/cli/latest/reference/quicksight/describe-analysis-definition.html) helped me a lot by providing majority of the `QuickSight::Definition` CloudFormation context from an existing analysis as guidelines.
 
 Take a look at the `QuickSight::Definition` use in this article [here](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L958).
 
@@ -166,7 +168,7 @@ Take a look at the `QuickSight::Definition` use in this article [here](https://g
    2. Map the data set placeholder name from the __base template__ to the new data set
 5. Finally, [create the dashboard from the new template using CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-dashboard.html)
 
-__OMG! There are lot of hoops you have to go through.__ I hope AWS can make it easier. One of the caveats is you always have to keep the base analysis and template because that's where dervied analyses get the information like fields, filters, parameter and layouts from.
+__OMG! There are lots of hoops through which you have to go. I hope AWS can make it easier, for example, convert existing analysis into CloudFormation template with a click of button.__ One of the caveats of using second method is that you always have to keep the base analysis and template because that's where derived analyses get the information like fields, filters, parameters, and layouts from.
 
 ### Feedback
 Please reach out to me directly on the platform if you have any feedback.

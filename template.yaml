@@ -5,7 +5,7 @@ Parameters:
     Type: String
     Default: "nail-salon-location-analysis"
     Description: >-
-      The appplication name. This will become the Glue database and QuickSight analysis ID.
+      The application name. This will become the Glue database and QuickSight analysis ID.
 
   AppLongName:
     Type: String
@@ -17,7 +17,7 @@ Parameters:
     Type: String
     Default: "Nail Salon"
     Description: >-
-      Business name in sigular notion. This will show up in the QuickSight report.
+      Business name in singular notion. This will show up in the QuickSight report.
 
   BusinessNamePlural:
     Type: String
