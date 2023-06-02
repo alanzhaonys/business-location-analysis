@@ -4,7 +4,7 @@
 ### Intro
 In this article, I will show you how to use AWS QuickSight and CloudFormation to generate analysis reports. I will be using real-world demographics and business directory data to analyze and recommend optimal business locations for your next venture.
 
-Below is a preview of the generated report. To see the full version, [click here](preview.pdf).
+Below is a preview of the generated report. To see the full preview version in PDF, [click here](preview.pdf). Within QuickSight Dashboard, you can drill down the results by state.
 
 ![Preview diagram](img/preview.png)
 
@@ -13,9 +13,9 @@ The infrastructure is as simple as below.
 ![Overview diagram](img/overview.png)
 
 ### The Goal
-The goal is to give an introduction to automating BI reports using QuickSight and CloudFormation with an example. By the end of the article, you should be able to understand how to create your own repeatable, portable, and manageable reports with code.
+The goal is to give an introduction to BI report automation using QuickSight and CloudFormation. By the end of the article, you should be able to understand how to create your own repeatable, portable, and manageable reports with code.
 
-__The goal is not to tell you that [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business.__
+__The goal IS NOT to tell you that [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business.__
 
 ### Prerequisites
 - AWS skills
@@ -155,18 +155,19 @@ To be fair, there is a lot of CloudFormation code you have to write, so it might
 There are two ways to generate QuickSight reports with CloudFormation that I know of. They will make more sense after you take a deep dive into using this methodology.
 
 #### Code analysis definitions manually
-Analysis definitions hold the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without relying on a base analysis. This is the method I chose for this article. The [describe-analysis-definition](https://docs.aws.amazon.com/cli/latest/reference/quicksight/describe-analysis-definition.html) helped me a lot by providing majority of the `QuickSight::Definition` CloudFormation context from an existing analysis as guidelines.
+Analysis definitions hold the information about fields, filters, parameters and layouts. It can be overwhelming to put everything together, but it allows you to create a brand new QuickSight analysis without relying on a base analysis. __This is the method I chose for this article.__ The [describe-analysis-definition](https://docs.aws.amazon.com/cli/latest/reference/quicksight/describe-analysis-definition.html) helped me a lot by providing majority of the `QuickSight::Definition` CloudFormation context from an existing analysis as guidelines.
 
 Take a look at the `QuickSight::Definition` use in this article [here](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L958).
 
 #### Derive from a maually created analysis
 1. Create a template from the base analysis using [create-template](https://docs.aws.amazon.com/cli/latest/reference/quicksight/create-template.html) CLI. There is no option to do it from the console
 2. [Create all the data sets with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-dataset.html)
-3. Get the new template's ARN from the CLI command result(step 1). [Create a new template with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-template.html) and specify the ARN as the `SourceEntity::SourceTemplate::Arn`
+3. Get the new template's ARN from the step 1 CLI command result. [Create a new template with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-template.html) and specify the ARN as the `SourceEntity::SourceTemplate::Arn`
 4. [Create a new analysis with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-analysis.html) from the new template
    1. Get the list of data sets from [list-data-sets](https://docs.aws.amazon.com/cli/latest/reference/quicksight/list-data-sets.html) CLI because you need to specify `SourceEntity:SourceTemplate:DataSetReferences`
-   2. Map the data set placeholder name from the __base template__ to the new data set
+   2. Map the data set placeholder name of the __base template__ to the new data set
 5. Finally, [create the dashboard from the new template using CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-dashboard.html)
+   1. Map the data set placeholder name of the __base template__ to the new data set
 
 __OMG! There are lots of hoops through which you have to go. I hope AWS can make it easier, for example, convert existing analysis into CloudFormation template with a click of button.__ One of the caveats of using second method is that you always have to keep the base analysis and template because that's where derived analyses get the information like fields, filters, parameters, and layouts from.
 
