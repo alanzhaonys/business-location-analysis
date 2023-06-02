@@ -1,0 +1,2077 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  AppName:
+    Type: String
+
+  AppLongName:
+    Type: String
+
+  BusinessNameSingular:
+    Type: String
+
+  BusinessNamePlural:
+    Type: String
+
+  BusinessSlug:
+    Type: String
+
+  QuickSightArn:
+    Type: String
+
+Resources:
+  QuickSightDataSource:
+    Type: "AWS::QuickSight::DataSource"
+    Properties:
+      Name: !Sub "${AppName}-data-source"
+      AwsAccountId: !Ref AWS::AccountId
+      Type: "ATHENA"
+      DataSourceId: !Sub "${AppName}-data-source"
+      DataSourceParameters:
+        AthenaParameters:
+          WorkGroup: "primary"
+      SslProperties:
+        DisableSsl: false
+
+  QuickSightDataSetMedianIncome:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-median-income"
+      DataSetId: !Sub "${AppName}-median-income"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        median-income-physical-table:
+          RelationalTable:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Catalog: "AwsDataCatalog"
+            Schema: !Ref AppName
+            Name: "median_income"
+            InputColumns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "median_income"
+                Type: "INTEGER"
+      LogicalTableMap:
+        median-income-logical-table:
+          Alias: !Sub "${AppName}-median-income"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "median_income"
+          Source:
+            PhysicalTableId: "median-income-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetPopulationByZipCode:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-population-by-zipcode"
+      DataSetId: !Sub "${AppName}-population-by-zipcode"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        population-by-zipcode-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-population-by-zipcode"
+            SqlQuery: !Sub |
+              SELECT
+              z.zipcode, z.city, z.county, z.state_abbr, p.population
+              FROM "${AppName}"."population" p
+              JOIN "${AppName}"."zipcodes" z
+              ON p.zipcode = z.zipcode
+              ORDER BY p.population DESC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "population"
+                Type: "INTEGER"
+      LogicalTableMap:
+        population-by-zipcode-logical-table:
+          Alias: !Sub "${AppName}-population-by-zipcode"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "state_abbr"
+                  - "population"
+          Source:
+            PhysicalTableId: "population-by-zipcode-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetZipCodes:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-zipcodes"
+      DataSetId: !Sub "${AppName}-zipcodes"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        zipcodes-physical-table:
+          RelationalTable:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Catalog: "AwsDataCatalog"
+            Schema: !Ref AppName
+            Name: "zipcodes"
+            InputColumns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "latitude"
+                Type: "DECIMAL"
+              - Name: "longitude"
+                Type: "DECIMAL"
+      LogicalTableMap:
+        zipcodes-logical-table:
+          Alias: "zipcodes"
+          DataTransforms:
+            - CastColumnTypeOperation:
+                ColumnName: "latitude"
+                NewColumnType: "DECIMAL"
+            - CastColumnTypeOperation:
+                ColumnName: "longitude"
+                NewColumnType: "DECIMAL"
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - TagColumnOperation:
+                ColumnName: "latitude"
+                Tags:
+                  - ColumnGeographicRole: "LATITUDE"
+            - TagColumnOperation:
+                ColumnName: "longitude"
+                Tags:
+                  - ColumnGeographicRole: "LONGITUDE"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "state"
+                  - "state_abbr"
+                  - "latitude"
+                  - "longitude"
+          Source:
+            PhysicalTableId: "zipcodes-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetScorePopulationBiased:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-score-population-biased"
+      DataSetId: !Sub "${AppName}-score-population-biased"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        score-population-biased-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-score-population-biased"
+            SqlQuery: !Sub |
+              WITH concentration AS (
+                SELECT COUNT(name) AS concentration, zipcode FROM "${AppName}"."${BusinessSlug}"
+                GROUP BY zipcode
+              )
+              SELECT z.zipcode, z.city, z.state_abbr, c.concentration, p.population, i.income,
+              (0.2 * c.concentration + 0.5 * p.population + 0.3 * i.income) AS score
+              FROM "${AppName}"."zipcodes" z
+              JOIN "${AppName}"."population" p ON z.zipcode = p.zipcode
+              JOIN "${AppName}"."median_income" i ON z.zipcode = i.zipcode
+              JOIN concentration c ON z.zipcode = c.zipcode
+              ORDER BY score DESC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+              - Name: "population"
+                Type: "INTEGER"
+              - Name: "income"
+                Type: "INTEGER"
+              - Name: "score"
+                Type: "DECIMAL"
+      LogicalTableMap:
+        score-population-biased-logical-table:
+          Alias: !Sub "${AppName}-score-population-biased"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "state_abbr"
+                  - "concentration"
+                  - "population"
+                  - "income"
+                  - "score"
+          Source:
+            PhysicalTableId: "score-population-biased-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetScoreIncomeBiased:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-score-income-biased"
+      DataSetId: !Sub "${AppName}-score-income-biased"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        score-income-biased-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-score-income-biased"
+            SqlQuery: !Sub |
+              WITH concentration AS (
+                SELECT COUNT(name) AS concentration, zipcode FROM "${AppName}"."${BusinessSlug}"
+                GROUP BY zipcode
+              )
+              SELECT z.zipcode, z.city, z.state_abbr, c.concentration, p.population, i.income,
+              (0.2 * c.concentration + 0.3 * p.population + 0.5 * i.income) AS score
+              FROM "${AppName}"."zipcodes" z
+              JOIN "${AppName}"."population" p ON z.zipcode = p.zipcode
+              JOIN "${AppName}"."median_income" i ON z.zipcode = i.zipcode
+              JOIN concentration c ON z.zipcode = c.zipcode
+              ORDER BY score DESC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+              - Name: "population"
+                Type: "INTEGER"
+              - Name: "income"
+                Type: "INTEGER"
+              - Name: "score"
+                Type: "DECIMAL"
+      LogicalTableMap:
+        score-income-biased-logical-table:
+          Alias: !Sub "${AppName}-score-income-biased"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "state_abbr"
+                  - "concentration"
+                  - "population"
+                  - "income"
+                  - "score"
+          Source:
+            PhysicalTableId: "score-income-biased-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetConcentrationByState:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-concentration-by-state"
+      DataSetId: !Sub "${AppName}-concentration-by-state"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        concentration-by-state-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-concentration-by-state"
+            SqlQuery: !Sub |
+              SELECT state, COUNT(name)
+              AS concentration
+              FROM "${AppName}"."${BusinessSlug}"
+              GROUP BY state ORDER BY concentration DESC
+            Columns:
+              - Name: "state"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+      LogicalTableMap:
+        concentration-by-state-logical-table:
+          Alias: !Sub "${AppName}-concentration-by-state"
+          DataTransforms:
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "state"
+                  - "concentration"
+          Source:
+            PhysicalTableId: "concentration-by-state-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetPopulation:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-population"
+      DataSetId: !Sub "${AppName}-population"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        population-physical-table:
+          RelationalTable:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Catalog: "AwsDataCatalog"
+            Schema: !Ref AppName
+            Name: "population"
+            InputColumns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "population"
+                Type: "INTEGER"
+      LogicalTableMap:
+        population-logical-table:
+          Alias: "population"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "population"
+          Source:
+            PhysicalTableId: "population-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetCompetitionIndex:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-competition-index"
+      DataSetId: !Sub "${AppName}-competition-index"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        competition-index-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-competition-index"
+            SqlQuery: !Sub |
+              WITH concentration AS (
+                SELECT COUNT(name) AS concentration, zipcode FROM "${AppName}"."${BusinessSlug}"
+                GROUP BY zipcode
+              )
+              SELECT c.zipcode, z.county, z.city, z.state_abbr, c.concentration, p.population,
+              ROUND(CAST(p.population AS DOUBLE) / CAST(c.concentration + 1 AS DOUBLE), 3) AS score
+              FROM "${AppName}"."population" p
+              JOIN concentration c ON p.zipcode = c.zipcode
+              JOIN "${AppName}"."zipcodes" z ON c.zipcode = z.zipcode
+              WHERE p.population > 5000
+              ORDER BY score DESC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+              - Name: "population"
+                Type: "INTEGER"
+              - Name: "score"
+                Type: "DECIMAL"
+      LogicalTableMap:
+        competition-index-logical-table:
+          Alias: !Sub "${AppName}-competition-index"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "state_abbr"
+                  - "concentration"
+                  - "population"
+                  - "score"
+          Source:
+            PhysicalTableId: "competition-index-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetMarketPotential:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-market-potential"
+      DataSetId: !Sub "${AppName}-market-potential"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        market-potential-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: "market-potential"
+            SqlQuery: !Sub |
+              WITH concentration AS (
+                SELECT COUNT(name) AS concentration, zipcode FROM "${AppName}"."${BusinessSlug}"
+                GROUP BY zipcode
+              )
+              SELECT c.zipcode, z.county, z.city, z.state_abbr, c.concentration, i.income, p.population,
+              CAST(p.population AS DECIMAL) / 3.13 / CAST(c.concentration + 1 AS DECIMAL) * CAST(i.income AS DECIMAL) * 0.1 AS score
+              FROM "${AppName}"."population" p
+              JOIN concentration c ON p.zipcode = c.zipcode
+              JOIN "${AppName}"."median_income" i ON i.zipcode = c.zipcode
+              JOIN "${AppName}"."zipcodes" z ON c.zipcode = z.zipcode
+              WHERE p.population > 5000
+              ORDER BY score ASC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+              - Name: "income"
+                Type: "INTEGER"
+              - Name: "population"
+                Type: "INTEGER"
+              - Name: "score"
+                Type: "DECIMAL"
+      LogicalTableMap:
+        market-potential-logical-table:
+          Alias: !Sub "${AppName}-market-potential"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "state_abbr"
+                  - "concentration"
+                  - "income"
+                  - "population"
+                  - "score"
+          Source:
+            PhysicalTableId: "market-potential-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetBusiness:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-${BusinessSlug}"
+      DataSetId: !Sub "${AppName}-${BusinessSlug}"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        business-physical-table:
+          RelationalTable:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Catalog: "AwsDataCatalog"
+            Schema: !Ref AppName
+            Name: !Ref BusinessSlug
+            InputColumns:
+              - Name: "name"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "state"
+                Type: "STRING"
+              - Name: "zipcode"
+                Type: "STRING"
+      LogicalTableMap:
+        business-logical-table:
+          Alias: !Ref BusinessSlug
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "name"
+                  - "city"
+                  - "state"
+                  - "zipcode"
+          Source:
+            PhysicalTableId: "business-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetIncomeByZipCode:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-income-by-zipcode"
+      DataSetId: !Sub "${AppName}-income-by-zipcode"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        income-by-zipcode-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-income-by-zipcode"
+            SqlQuery: !Sub |
+              SELECT
+              z.zipcode, z.city, z.county, z.state_abbr, i.income
+              FROM "${AppName}"."median_income" i
+              JOIN "${AppName}"."zipcodes" z
+              ON i.zipcode = z.zipcode
+              ORDER BY i.income DESC
+            Columns:
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "income"
+                Type: "INTEGER"
+      LogicalTableMap:
+        income-by-zipcode-logical-table:
+          Alias: !Sub "${AppName}-income-by-zipcode"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "state_abbr"
+                  - "income"
+          Source:
+            PhysicalTableId: "income-by-zipcode-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightDataSetConcentrationByZipCode:
+    Type: "AWS::QuickSight::DataSet"
+    Properties:
+      Name: !Sub "${AppName}-concentration-by-zipcode"
+      DataSetId: !Sub "${AppName}-concentration-by-zipcode"
+      AwsAccountId: !Ref AWS::AccountId
+      PhysicalTableMap:
+        concentration-by-zipcode-physical-table:
+          CustomSql:
+            DataSourceArn: !GetAtt QuickSightDataSource.Arn
+            Name: !Sub "${AppName}-concentration-by-zipcode"
+            SqlQuery: !Sub |
+              SELECT
+              CONCAT(b.zipcode, ', ', z.city, ', ', z.state_abbr) AS zipcode_label, b.zipcode, z.city, z.county, z.state_abbr,
+              COUNT(b.name) AS concentration
+              FROM "${AppName}"."${BusinessSlug}" b
+              JOIN "${AppName}"."zipcodes" z
+              ON b.zipcode = z.zipcode
+              GROUP BY b.zipcode, z.city, z.county, z.state_abbr ORDER BY concentration DESC
+            Columns:
+              - Name: "zipcode_label"
+                Type: "STRING"
+              - Name: "zipcode"
+                Type: "STRING"
+              - Name: "city"
+                Type: "STRING"
+              - Name: "county"
+                Type: "STRING"
+              - Name: "state_abbr"
+                Type: "STRING"
+              - Name: "concentration"
+                Type: "INTEGER"
+      LogicalTableMap:
+        concentration-by-zipcode-logical-table:
+          Alias: !Sub "${AppName}-concentration-by-zipcode"
+          DataTransforms:
+            - TagColumnOperation:
+                ColumnName: "zipcode"
+                Tags:
+                  - ColumnGeographicRole: "POSTCODE"
+            - TagColumnOperation:
+                ColumnName: "city"
+                Tags:
+                  - ColumnGeographicRole: "CITY"
+            - TagColumnOperation:
+                ColumnName: "county"
+                Tags:
+                  - ColumnGeographicRole: "COUNTY"
+            - ProjectOperation:
+                ProjectedColumns:
+                  - "zipcode"
+                  - "city"
+                  - "county"
+                  - "zipcode_label"
+                  - "state_abbr"
+                  - "concentration"
+          Source:
+            PhysicalTableId: "concentration-by-zipcode-physical-table"
+      ImportMode: "DIRECT_QUERY"
+      FieldFolders: {}
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DeleteDataSet"
+            - "quicksight:UpdateDataSetPermissions"
+            - "quicksight:PutDataSetRefreshProperties"
+            #- "quicksight:CreateRefreshSchedule"
+            - "quicksight:CancelIngestion"
+            - "quicksight:DeleteRefreshSchedule"
+            #- "quicksight:UpdateRefreshSchedule"
+            - "quicksight:ListRefreshSchedules"
+            - "quicksight:DescribeDataSetRefreshProperties"
+            - "quicksight:DescribeDataSet"
+            - "quicksight:PassDataSet"
+            - "quicksight:CreateIngestion"
+            - "quicksight:DescribeRefreshSchedule"
+            - "quicksight:ListIngestions"
+            - "quicksight:UpdateDataSet"
+            - "quicksight:DescribeDataSetPermissions"
+            - "quicksight:DeleteDataSetRefreshProperties"
+            - "quicksight:DescribeIngestion"
+
+  QuickSightAnalysis:
+    Type: "AWS::QuickSight::Analysis"
+    Properties:
+      AnalysisId: !Sub "${AppName}-analysis"
+      Name: !Ref AppLongName
+      AwsAccountId: !Ref AWS::AccountId
+      Definition:
+        DataSetIdentifierDeclarations:
+          - Identifier: !Sub "${AppName}-concentration-by-zipcode"
+            DataSetArn: !GetAtt QuickSightDataSetConcentrationByZipCode.Arn
+          - Identifier: !Sub "${AppName}-concentration-by-state"
+            DataSetArn: !GetAtt QuickSightDataSetConcentrationByState.Arn
+          - Identifier: !Sub "${AppName}-median-income"
+            DataSetArn: !GetAtt QuickSightDataSetMedianIncome.Arn
+          - Identifier: !Sub "${AppName}-market-potential"
+            DataSetArn: !GetAtt QuickSightDataSetMarketPotential.Arn
+          - Identifier: !Sub "${AppName}-population-by-zipcode"
+            DataSetArn: !GetAtt QuickSightDataSetPopulationByZipCode.Arn
+          - Identifier: !Sub "${AppName}-competition-index"
+            DataSetArn: !GetAtt QuickSightDataSetCompetitionIndex.Arn
+          - Identifier: !Sub "${AppName}-zipcodes"
+            DataSetArn: !GetAtt QuickSightDataSetZipCodes.Arn
+          - Identifier: !Sub "${AppName}-score-population-biased"
+            DataSetArn: !GetAtt QuickSightDataSetScorePopulationBiased.Arn
+          - Identifier: !Sub "${AppName}-score-income-biased"
+            DataSetArn: !GetAtt QuickSightDataSetScoreIncomeBiased.Arn
+          - Identifier: !Sub "${AppName}-income-by-zipcode"
+            DataSetArn: !GetAtt QuickSightDataSetIncomeByZipCode.Arn
+          - Identifier: !Sub "${AppName}-population"
+            DataSetArn: !GetAtt QuickSightDataSetPopulation.Arn
+          - Identifier: !Ref BusinessSlug
+            DataSetArn: !GetAtt QuickSightDataSetBusiness.Arn
+        Sheets:
+          - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+            Name: !Ref AppLongName
+            ParameterControls:
+              - Dropdown:
+                  ParameterControlId: e7d9600b-a64c-42ef-9d9c-08d736a911ac
+                  Title: Select State
+                  SourceParameterName: selectState
+                  DisplayOptions:
+                    SelectAllOptions:
+                      Visibility: VISIBLE
+                    TitleOptions:
+                      Visibility: VISIBLE
+                      FontConfiguration:
+                        FontSize:
+                          Relative: MEDIUM
+                  Type: MULTI_SELECT
+                  SelectableValues:
+                    LinkToDataSetColumn:
+                      DataSetIdentifier: !Sub "${AppName}-zipcodes"
+                      ColumnName: state_abbr
+            Visuals:
+              - BarChartVisual:
+                  VisualId: b59e8b11-e9d4-44ad-bdd3-36cb7b384d84
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: !Sub "<visual-title>Top ${BusinessNameSingular} Concentration by States</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      BarChartAggregatedFieldWells:
+                        Category:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state.0.1685387857112
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-concentration-by-state"
+                                ColumnName: state
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457950507
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-concentration-by-state"
+                                ColumnName: concentration
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                        Colors: []
+                    SortConfiguration:
+                      CategorySort:
+                        - FieldSort:
+                            FieldId: >-
+                              ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457950507
+                            Direction: DESC
+                      CategoryItemsLimit:
+                        ItemsLimit: 20
+                        OtherCategories: INCLUDE
+                      ColorItemsLimit:
+                        OtherCategories: INCLUDE
+                      SmallMultiplesLimitConfiguration:
+                        OtherCategories: INCLUDE
+                    Orientation: HORIZONTAL
+                    BarsArrangement: CLUSTERED
+                    CategoryAxis:
+                      ScrollbarOptions:
+                        VisibleRange:
+                          PercentRange:
+                            From: 52.38095238095238
+                            To: 100
+                    CategoryLabelOptions:
+                      Visibility: HIDDEN
+                      SortIconVisibility: HIDDEN
+                    ValueAxis:
+                      DataOptions:
+                        NumericAxisOptions:
+                          Scale:
+                            Logarithmic: {}
+                          Range:
+                            DataDriven: {}
+                    ValueLabelOptions:
+                      Visibility: HIDDEN
+                      SortIconVisibility: HIDDEN
+                    DataLabels:
+                      Visibility: VISIBLE
+                      Overlap: DISABLE_OVERLAP
+                    Tooltip:
+                      TooltipVisibility: VISIBLE
+                      SelectedTooltipType: BASIC
+                      FieldBasedTooltip:
+                        AggregationVisibility: HIDDEN
+                        TooltipTitleType: PRIMARY_VALUE
+                        TooltipFields:
+                          - FieldTooltipItem:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state.0.1685387857112
+                              Visibility: VISIBLE
+                          - FieldTooltipItem:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457950507
+                              Visibility: VISIBLE
+                  Actions: []
+                  ColumnHierarchies: []
+              - KPIVisual:
+                  VisualId: 96a2a5b7-7506-4fad-b78d-32cb8e3e05c7
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: !Sub "<visual-title>Total ${BusinessNamePlural} in US</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      Values:
+                        - NumericalMeasureField:
+                            FieldId: >-
+                              ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.0.1685378063015
+                            Column:
+                              DataSetIdentifier: !Sub "${AppName}-concentration-by-state"
+                              ColumnName: concentration
+                            AggregationFunction:
+                              SimpleNumericalAggregation: SUM
+                      TargetValues: []
+                      TrendGroups: []
+                    SortConfiguration: {}
+                  Actions: []
+                  ColumnHierarchies: []
+              - BarChartVisual:
+                  VisualId: 59791892-198a-49fa-b4cf-49fff27508eb
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: !Sub "<visual-title>Top ${BusinessNameSingular} Concentration by ZIP</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      BarChartAggregatedFieldWells:
+                        Category:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode_label.1.1685458994668
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-concentration-by-zipcode"
+                                ColumnName: zipcode_label
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457928423
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-concentration-by-zipcode"
+                                ColumnName: concentration
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                        Colors: []
+                    SortConfiguration:
+                      CategorySort:
+                        - FieldSort:
+                            FieldId: >-
+                              ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457928423
+                            Direction: DESC
+                      CategoryItemsLimit:
+                        ItemsLimit: 20
+                        OtherCategories: INCLUDE
+                      ColorItemsLimit:
+                        OtherCategories: INCLUDE
+                      SmallMultiplesLimitConfiguration:
+                        OtherCategories: INCLUDE
+                    Orientation: HORIZONTAL
+                    BarsArrangement: CLUSTERED
+                    CategoryAxis:
+                      TickLabelOptions:
+                        LabelOptions:
+                          Visibility: VISIBLE
+                      AxisLineVisibility: VISIBLE
+                      ScrollbarOptions:
+                        Visibility: VISIBLE
+                        VisibleRange:
+                          PercentRange:
+                            From: 52.38095238095238
+                            To: 100
+                    CategoryLabelOptions:
+                      Visibility: HIDDEN
+                      SortIconVisibility: HIDDEN
+                    ValueAxis:
+                      TickLabelOptions:
+                        LabelOptions:
+                          Visibility: VISIBLE
+                          FontConfiguration:
+                            FontSize:
+                              Relative: MEDIUM
+                      GridLineVisibility: VISIBLE
+                      DataOptions:
+                        NumericAxisOptions:
+                          Scale:
+                            Logarithmic: {}
+                      AxisOffset: 125px
+                    ValueLabelOptions:
+                      Visibility: HIDDEN
+                      SortIconVisibility: HIDDEN
+                    DataLabels:
+                      Visibility: VISIBLE
+                      Overlap: DISABLE_OVERLAP
+                    Tooltip:
+                      TooltipVisibility: VISIBLE
+                      SelectedTooltipType: BASIC
+                      FieldBasedTooltip:
+                        AggregationVisibility: HIDDEN
+                        TooltipTitleType: PRIMARY_VALUE
+                        TooltipFields:
+                          - FieldTooltipItem:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.1.1685457928423
+                              Visibility: VISIBLE
+                          - FieldTooltipItem:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode_label.1.1685458994668
+                              Visibility: VISIBLE
+                  Actions: []
+                  ColumnHierarchies: []
+              - TableVisual:
+                  VisualId: ff21b2cc-b8d3-49c1-8b47-90da8f01981f
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: <visual-title>Top Median Income by ZIP</visual-title>
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.1.1685596374676
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-income-by-zipcode"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.3.1685596470521
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-income-by-zipcode"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.2.1685596378080
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-income-by-zipcode"
+                                ColumnName: state_abbr
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.income.1.1685456967884
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-income-by-zipcode"
+                                ColumnName: income
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                              FormatConfiguration:
+                                FormatConfiguration:
+                                  CurrencyDisplayFormatConfiguration:
+                                    SeparatorConfiguration:
+                                      DecimalSeparator: DOT
+                                      ThousandsSeparator:
+                                        Symbol: COMMA
+                                        Visibility: VISIBLE
+                                    Symbol: USD
+                                    DecimalPlacesConfiguration:
+                                      DecimalPlaces: 2
+                                    NegativeValueConfiguration:
+                                      DisplayMode: POSITIVE
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: >-
+                              ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.income.1.1685456967884
+                            Direction: DESC
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.1.1685596374676
+                          Width: 74px
+                          CustomLabel: ZIP
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.3.1685596470521
+                          Width: 115px
+                          CustomLabel: City
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.2.1685596378080
+                          Width: 61px
+                          CustomLabel: State
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.income.1.1685456967884
+                          CustomLabel: Income
+                      Order: []
+                  Actions: []
+              - TableVisual:
+                  VisualId: a2b0cd5b-0844-4841-8cfb-63a779331384
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: <visual-title>Top Population by ZIP</visual-title>
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.3.1685596242092
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-population-by-zipcode"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.1.1685596231911
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-population-by-zipcode"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.2.1685596237081
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-population-by-zipcode"
+                                ColumnName: state_abbr
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.1.1685457145507
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-population-by-zipcode"
+                                ColumnName: population
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: >-
+                              ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.1.1685457145507
+                            Direction: DESC
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.3.1685596242092
+                          Width: 73px
+                          CustomLabel: ZIP
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.1.1685596231911
+                          Width: 118px
+                          CustomLabel: City
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.2.1685596237081
+                          Width: 62px
+                          CustomLabel: State
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.1.1685457145507
+                          Width: 98px
+                          CustomLabel: Population
+                      Order: []
+                  Actions: []
+              - TableVisual:
+                  VisualId: a28fca8b-3e02-4434-970d-e12da7e4b69d
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: "<visual-title>\n  <inline color=\"#202124\">Competition</inline>\n  \_Index (Low to High) for State:\_\n  <parameter>${selectState}</parameter>\n</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.3.1685593883901
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.4.1685593886822
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.5.1685593891038
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: state_abbr
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.6.1685593898198
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: concentration
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.7.1685593901008
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: population
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.3.1685464608954
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-competition-index"
+                                ColumnName: score
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.3.1685464608954
+                            Direction: DESC
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.3.1685593883901
+                          Width: 90px
+                          CustomLabel: ZIP
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.4.1685593886822
+                          Width: 162px
+                          CustomLabel: City
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.5.1685593891038
+                          Width: 62px
+                          CustomLabel: State
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.6.1685593898198
+                          CustomLabel: Concentration
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.7.1685593901008
+                          Width: 189px
+                          CustomLabel: Population
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.3.1685464608954
+                          Width: 148px
+                          CustomLabel: Score
+                      Order: []
+                  Actions: []
+              - TableVisual:
+                  VisualId: e63238b3-14c4-4d13-ba78-fbf1bab546e4
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: "<visual-title>\n  Market Potential (High to Low) for state:\_\n  <parameter>${selectState}</parameter>\n</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.5.1685594391257
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.2.1685594372724
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.3.1685594382021
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: state_abbr
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.4.1685594386007
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: concentration
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.4.1685594034642
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: population
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.income.5.1685594036817
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: income
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.6.1685594393695
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-market-potential"
+                                ColumnName: score
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.6.1685594393695
+                            Direction: DESC
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.zipcode.5.1685594391257
+                          Width: 87px
+                          CustomLabel: ZIP
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.city.2.1685594372724
+                          Width: 165px
+                          CustomLabel: City
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.state_abbr.3.1685594382021
+                          Width: 62px
+                          CustomLabel: State
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.concentration.4.1685594386007
+                          CustomLabel: Concentration
+                        - FieldId: >-
+                            ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.population.4.1685594034642
+                          Width: 114px
+                          CustomLabel: Population
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.income.5.1685594036817
+                          Width: 90px
+                          CustomLabel: Income
+                        - FieldId: ad0fab6a-9afb-42d6-b5ce-40c8db0e3196.score.6.1685594393695
+                          Width: 133px
+                          CustomLabel: Score
+                      Order: []
+                  Actions: []
+              - WordCloudVisual:
+                  VisualId: 4506f162-8b36-4e9e-9194-1dbee424007d
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: <visual-title>Popular Names in US</visual-title>
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      WordCloudAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                a9ab53f5-4f56-40ad-8128-fed3e501b968.name.1.1685588617494
+                              Column:
+                                DataSetIdentifier: !Ref BusinessSlug
+                                ColumnName: name
+                        Size:
+                          - CategoricalMeasureField:
+                              FieldId: >-
+                                a9ab53f5-4f56-40ad-8128-fed3e501b968.zipcode.1.1685588598548
+                              Column:
+                                DataSetIdentifier: !Ref BusinessSlug
+                                ColumnName: name
+                              AggregationFunction: COUNT
+                    SortConfiguration:
+                      CategoryItemsLimit:
+                        OtherCategories: INCLUDE
+                    WordCloudOptions:
+                      WordOrientation: HORIZONTAL
+                      WordScaling: EMPHASIZE
+                      CloudLayout: FLUID
+                      WordPadding: SMALL
+                  Actions: []
+                  ColumnHierarchies: []
+              - TableVisual:
+                  VisualId: 2f440580-e345-41ca-913e-22f5d69c82e9
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: "<visual-title>\n  Population Biased Recommendations for State:\_\n  <parameter>${selectState}</parameter>\n</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.zipcode.0.1685591380130
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.city.1.1685591400712
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.state_abbr.6.1685592566556
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: state_abbr
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.concentration.3.1685591411219
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: concentration
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.population.6.1685591417736
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: population
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.income.7.1685591422316
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: income
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.score.6.1685591435112
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                                ColumnName: score
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: 62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.score.6.1685591435112
+                            Direction: DESC
+                      PaginationConfiguration:
+                        PageSize: 500
+                        PageNumber: 1
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: 62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.zipcode.0.1685591380130
+                          Width: 98px
+                          CustomLabel: ZIP
+                        - FieldId: 62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.city.1.1685591400712
+                          Width: 176px
+                          CustomLabel: City
+                        - FieldId: >-
+                            62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.state_abbr.6.1685592566556
+                          Width: 72px
+                          CustomLabel: State
+                        - FieldId: >-
+                            62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.concentration.3.1685591411219
+                          CustomLabel: Concentration
+                        - FieldId: >-
+                            62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.population.6.1685591417736
+                          Width: 119px
+                          CustomLabel: Population
+                        - FieldId: 62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.income.7.1685591422316
+                          Width: 93px
+                          CustomLabel: Income
+                        - FieldId: 62db4968-78d1-4a6d-a4ee-5b44e4a2c42a.score.6.1685591435112
+                          Width: 94px
+                          CustomLabel: Score
+                      Order: []
+                  Actions: []
+              - TableVisual:
+                  VisualId: 56ac56b6-6c41-435d-9d8a-3b607294e22c
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      RichText: "<visual-title>\n  Income Biased Recommendations for State:\_\n  <parameter>${selectState}</parameter>\n</visual-title>"
+                  Subtitle:
+                    Visibility: VISIBLE
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.zipcode.1.1685592137838
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: zipcode
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.city.2.1685592142469
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: city
+                          - CategoricalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.state_abbr.6.1685592555656
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: state_abbr
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.concentration.4.1685592152561
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: concentration
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.population.6.1685592161413
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: population
+                          - NumericalDimensionField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.income.5.1685592159200
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: income
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.score.0.1685592121902
+                              Column:
+                                DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                                ColumnName: score
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                    SortConfiguration:
+                      RowSort:
+                        - FieldSort:
+                            FieldId: bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.score.0.1685592121902
+                            Direction: DESC
+                    TableOptions:
+                      HeaderStyle:
+                        TextWrap: WRAP
+                        Height: 25
+                    FieldOptions:
+                      SelectedFieldOptions:
+                        - FieldId: bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.zipcode.1.1685592137838
+                          Width: 95px
+                          CustomLabel: ZIP
+                        - FieldId: bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.city.2.1685592142469
+                          Width: 178px
+                          CustomLabel: City
+                        - FieldId: >-
+                            bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.state_abbr.6.1685592555656
+                          Width: 68px
+                          CustomLabel: State
+                        - FieldId: >-
+                            bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.concentration.4.1685592152561
+                          Width: 103px
+                          CustomLabel: Concentration
+                        - FieldId: >-
+                            bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.population.6.1685592161413
+                          Width: 116px
+                          CustomLabel: Population
+                        - FieldId: bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.income.5.1685592159200
+                          Width: 102px
+                          CustomLabel: Income
+                        - FieldId: bd985e10-b1d9-4a2d-9874-c8d9fbd6e9b4.score.0.1685592121902
+                          Width: 90px
+                          CustomLabel: Score
+                      Order: []
+                  Actions: []
+            Layouts:
+              - Configuration:
+                  GridLayout:
+                    Elements:
+                      - ElementId: 96a2a5b7-7506-4fad-b78d-32cb8e3e05c7
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 0
+                        RowSpan: 3
+                      - ElementId: b59e8b11-e9d4-44ad-bdd3-36cb7b384d84
+                        ElementType: VISUAL
+                        ColumnIndex: 18
+                        ColumnSpan: 9
+                        RowIndex: 0
+                        RowSpan: 8
+                      - ElementId: 56ac56b6-6c41-435d-9d8a-3b607294e22c
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 3
+                        RowSpan: 6
+                      - ElementId: 59791892-198a-49fa-b4cf-49fff27508eb
+                        ElementType: VISUAL
+                        ColumnIndex: 18
+                        ColumnSpan: 9
+                        RowIndex: 8
+                        RowSpan: 8
+                      - ElementId: 2f440580-e345-41ca-913e-22f5d69c82e9
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 9
+                        RowSpan: 6
+                      - ElementId: a28fca8b-3e02-4434-970d-e12da7e4b69d
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 15
+                        RowSpan: 6
+                      - ElementId: ff21b2cc-b8d3-49c1-8b47-90da8f01981f
+                        ElementType: VISUAL
+                        ColumnIndex: 18
+                        ColumnSpan: 9
+                        RowIndex: 16
+                        RowSpan: 11
+                      - ElementId: e63238b3-14c4-4d13-ba78-fbf1bab546e4
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 21
+                        RowSpan: 6
+                      - ElementId: 4506f162-8b36-4e9e-9194-1dbee424007d
+                        ElementType: VISUAL
+                        ColumnIndex: 0
+                        ColumnSpan: 18
+                        RowIndex: 27
+                        RowSpan: 11
+                      - ElementId: a2b0cd5b-0844-4841-8cfb-63a779331384
+                        ElementType: VISUAL
+                        ColumnIndex: 18
+                        ColumnSpan: 9
+                        RowIndex: 27
+                        RowSpan: 11
+                    CanvasSizeOptions:
+                      ScreenCanvasSizeOptions:
+                        ResizeOption: FIXED
+                        OptimizedViewPortWidth: 1600px
+            SheetControlLayouts:
+              - Configuration:
+                  GridLayout:
+                    Elements:
+                      - ElementId: e7d9600b-a64c-42ef-9d9c-08d736a911ac
+                        ElementType: PARAMETER_CONTROL
+                        ColumnSpan: 2
+                        RowSpan: 1
+            ContentType: INTERACTIVE
+        CalculatedFields: []
+        ParameterDeclarations:
+          - StringParameterDeclaration:
+              ParameterValueType: MULTI_VALUED
+              Name: selectState
+              DefaultValues: {}
+              ValueWhenUnset:
+                ValueWhenUnsetOption: "NULL"
+        FilterGroups:
+          - FilterGroupId: 4cb4b47c-a95c-4fe7-82fb-82025734eba1
+            Filters:
+              - CategoryFilter:
+                  FilterId: 9b507796-4890-427f-bd9b-3b9994934c97
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-concentration-by-zipcode"
+                    ColumnName: zipcode
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: e4ad18d3-b572-457a-a8ca-6ed1ca517e05
+            Filters:
+              - CategoryFilter:
+                  FilterId: 30ee55db-b048-41a0-8d01-fc901a00092c
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-score-income-biased"
+                    ColumnName: state_abbr
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: 8de2c7aa-e678-428e-8fa5-3e63daecc642
+            Filters:
+              - CategoryFilter:
+                  FilterId: 6e4d93f2-864d-427e-a515-8e6fef880484
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-score-population-biased"
+                    ColumnName: state_abbr
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: d1e17e5d-71f2-46f8-8365-8958846f7797
+            Filters:
+              - CategoryFilter:
+                  FilterId: 721e0a99-c0ba-421b-9059-32e099cd2778
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-competition-index"
+                    ColumnName: state_abbr
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: 1d7abe44-8cb6-47ad-bdef-2030acd1c894
+            Filters:
+              - CategoryFilter:
+                  FilterId: e4a31181-f359-4fd3-ae35-90e8f405af40
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-market-potential"
+                    ColumnName: state_abbr
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: d2d5526e-262c-4278-b5a7-f3302a702a78
+            Filters:
+              - CategoryFilter:
+                  FilterId: c5fc1c05-9c4d-4af5-a3d8-0e393ed89ce4
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-population-by-zipcode"
+                    ColumnName: state_abbr
+                  Configuration:
+                    CustomFilterConfiguration:
+                      MatchOperator: EQUALS
+                      ParameterName: selectState
+                      NullOption: NON_NULLS_ONLY
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+          - FilterGroupId: f9977a85-2372-4fae-a6ac-e87fe74ee381
+            Filters:
+              - CategoryFilter:
+                  FilterId: 0636cb8b-eaaa-42c1-bf7f-ef7b99f326ac
+                  Column:
+                    DataSetIdentifier: !Sub "${AppName}-income-by-zipcode"
+                    ColumnName: state_abbr
+                  Configuration:
+                    FilterListConfiguration:
+                      MatchOperator: CONTAINS
+                      SelectAllOptions: FILTER_ALL_VALUES
+            ScopeConfiguration:
+              SelectedSheets:
+                SheetVisualScopingConfigurations:
+                  - SheetId: b6164082-551c-46d7-a991-20dce39351bc
+                    Scope: ALL_VISUALS
+            Status: ENABLED
+            CrossDataset: SINGLE_DATASET
+        AnalysisDefaults:
+          DefaultNewSheetConfiguration:
+            InteractiveLayoutConfiguration:
+              Grid:
+                CanvasSizeOptions:
+                  ScreenCanvasSizeOptions:
+                    ResizeOption: FIXED
+                    OptimizedViewPortWidth: 1600px
+            SheetContentType: INTERACTIVE
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:RestoreAnalysis"
+            - "quicksight:UpdateAnalysisPermissions"
+            - "quicksight:DeleteAnalysis"
+            - "quicksight:DescribeAnalysisPermissions"
+            - "quicksight:QueryAnalysis"
+            - "quicksight:DescribeAnalysis"
+            - "quicksight:UpdateAnalysis"
+
+  QuickSightTemplate:
+    Type: "AWS::QuickSight::Template"
+    Properties:
+      TemplateId: !Sub "${AppName}-template"
+      Name: !Sub "${AppName} Template"
+      AwsAccountId: !Ref AWS::AccountId
+      SourceEntity:
+        SourceAnalysis:
+          Arn: !GetAtt QuickSightAnalysis.Arn
+          DataSetReferences:
+            - DataSetPlaceholder: !Sub "${AppName}-market-potential"
+              DataSetArn: !GetAtt QuickSightDataSetMarketPotential.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-concentration-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetConcentrationByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-${BusinessSlug}"
+              DataSetArn: !GetAtt QuickSightDataSetBusiness.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-population-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetPopulationByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-competition-index"
+              DataSetArn: !GetAtt QuickSightDataSetCompetitionIndex.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-score-population-biased"
+              DataSetArn: !GetAtt QuickSightDataSetScorePopulationBiased.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-zipcodes"
+              DataSetArn: !GetAtt QuickSightDataSetZipCodes.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-income-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetIncomeByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-concentration-by-state"
+              DataSetArn: !GetAtt QuickSightDataSetConcentrationByState.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-population"
+              DataSetArn: !GetAtt QuickSightDataSetPopulation.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-score-income-biased"
+              DataSetArn: !GetAtt QuickSightDataSetScoreIncomeBiased.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-median-income"
+              DataSetArn: !GetAtt QuickSightDataSetMedianIncome.Arn
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DescribeTemplate"
+
+  QuickSightDashboard:
+    Type: AWS::QuickSight::Dashboard
+    Properties:
+      DashboardId: !Sub "${AppName}-dashboard"
+      Name: !Sub "${AppLongName} Dashboard"
+      AwsAccountId: !Ref AWS::AccountId
+      SourceEntity:
+        SourceTemplate:
+          Arn: !GetAtt QuickSightTemplate.Arn
+          DataSetReferences:
+            - DataSetPlaceholder: !Sub "${AppName}-market-potential"
+              DataSetArn: !GetAtt QuickSightDataSetMarketPotential.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-concentration-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetConcentrationByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-${BusinessSlug}"
+              DataSetArn: !GetAtt QuickSightDataSetBusiness.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-population-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetPopulationByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-competition-index"
+              DataSetArn: !GetAtt QuickSightDataSetCompetitionIndex.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-score-population-biased"
+              DataSetArn: !GetAtt QuickSightDataSetScorePopulationBiased.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-zipcodes"
+              DataSetArn: !GetAtt QuickSightDataSetZipCodes.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-income-by-zipcode"
+              DataSetArn: !GetAtt QuickSightDataSetIncomeByZipCode.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-concentration-by-state"
+              DataSetArn: !GetAtt QuickSightDataSetConcentrationByState.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-population"
+              DataSetArn: !GetAtt QuickSightDataSetPopulation.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-score-income-biased"
+              DataSetArn: !GetAtt QuickSightDataSetScoreIncomeBiased.Arn
+            - DataSetPlaceholder: !Sub "${AppName}-median-income"
+              DataSetArn: !GetAtt QuickSightDataSetMedianIncome.Arn
+      DashboardPublishOptions:
+        AdHocFilteringOption:
+          AvailabilityStatus: "DISABLED"
+      Permissions:
+        - Principal: !Ref QuickSightArn
+          Actions:
+            - "quicksight:DescribeDashboard"
+            - "quicksight:ListDashboardVersions"
+            - "quicksight:UpdateDashboardPermissions"
+            - "quicksight:QueryDashboard"
+            - "quicksight:UpdateDashboard"
+            - "quicksight:DeleteDashboard"
+            - "quicksight:DescribeDashboardPermissions"
+            - "quicksight:UpdateDashboardPublishedVersion"

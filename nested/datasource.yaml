@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  AppName:
+    Type: String
+
+  DataS3Bucket:
+    Type: String
+
+  BusinessSlug:
+    Type: String
+
+Resources:
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Ref AppName
+
+  ZipCodesGlueTable:
+    Type: "AWS::Glue::Table"
+    Properties:
+      DatabaseName: !Ref GlueDatabase
+      CatalogId: !Ref "AWS::AccountId"
+      TableInput:
+        Owner: "owner"
+        TableType: "EXTERNAL_TABLE"
+        Parameters:
+          "skip.header.line.count": "1"
+          compressionType: "none"
+          classification: "csv"
+          columnsOrdered: "true"
+          areColumnsQuoted: "true"
+          delimiter: ","
+          typeOfData: "file"
+        StorageDescriptor:
+          Columns:
+            - Name: "zipcode"
+              Type: "string"
+            - Name: "city"
+              Type: "string"
+            - Name: "state"
+              Type: "string"
+            - Name: "state_abbr"
+              Type: "string"
+            - Name: "county"
+              Type: "string"
+            - Name: "latitude"
+              Type: "double"
+            - Name: "longitude"
+              Type: "double"
+          Location: !Sub "s3://${DataS3Bucket}/zipcodes/"
+          InputFormat: "org.apache.hadoop.mapred.TextInputFormat"
+          OutputFormat: "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+          Compressed: false
+          NumberOfBuckets: -1
+          SerdeInfo:
+            SerializationLibrary: "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+            Parameters:
+              quoteChar: '"'
+              separatorChar: ","
+          Parameters:
+            "skip.header.line.count": "1"
+            compressionType: "none"
+            classification: "csv"
+            columnsOrdered: "true"
+            areColumnsQuoted: "true"
+            delimiter: ","
+            typeOfData: "file"
+          StoredAsSubDirectories: false
+        Retention: 0
+        Name: "zipcodes"
+
+  MedianIncomeGlueTable:
+    Type: "AWS::Glue::Table"
+    Properties:
+      DatabaseName: !Ref GlueDatabase
+      CatalogId: !Ref "AWS::AccountId"
+      TableInput:
+        Owner: "owner"
+        TableType: "EXTERNAL_TABLE"
+        Parameters:
+          "skip.header.line.count": "1"
+          compressionType: "none"
+          classification: "csv"
+          columnsOrdered: "true"
+          areColumnsQuoted: "true"
+          delimiter: ","
+          typeOfData: "file"
+        StorageDescriptor:
+          Columns:
+            - Name: "zipcode"
+              Type: "string"
+            - Name: "income"
+              Type: "int"
+          Location: !Sub "s3://${DataS3Bucket}/median_income/"
+          InputFormat: "org.apache.hadoop.mapred.TextInputFormat"
+          OutputFormat: "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+          Compressed: false
+          NumberOfBuckets: -1
+          SerdeInfo:
+            SerializationLibrary: "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+            Parameters:
+              quoteChar: '"'
+              separatorChar: ","
+          Parameters:
+            "skip.header.line.count": "1"
+            compressionType: "none"
+            classification: "csv"
+            columnsOrdered: "true"
+            areColumnsQuoted: "true"
+            delimiter: ","
+            typeOfData: "file"
+          StoredAsSubDirectories: false
+        Retention: 0
+        Name: "median_income"
+
+  PopulationGlueTable:
+    Type: "AWS::Glue::Table"
+    Properties:
+      DatabaseName: !Ref GlueDatabase
+      CatalogId: !Ref "AWS::AccountId"
+      TableInput:
+        Owner: "owner"
+        TableType: "EXTERNAL_TABLE"
+        Parameters:
+          "skip.header.line.count": "1"
+          compressionType: "none"
+          classification: "csv"
+          columnsOrdered: "true"
+          areColumnsQuoted: "true"
+          delimiter: ","
+          typeOfData: "file"
+        StorageDescriptor:
+          Columns:
+            - Name: "zipcode"
+              Type: "string"
+            - Name: "population"
+              Type: "int"
+          Location: !Sub "s3://${DataS3Bucket}/population/"
+          InputFormat: "org.apache.hadoop.mapred.TextInputFormat"
+          OutputFormat: "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+          Compressed: false
+          NumberOfBuckets: -1
+          SerdeInfo:
+            SerializationLibrary: "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+            Parameters:
+              quoteChar: '"'
+              separatorChar: ","
+          Parameters:
+            "skip.header.line.count": "1"
+            compressionType: "none"
+            classification: "csv"
+            columnsOrdered: "true"
+            areColumnsQuoted: "true"
+            delimiter: ","
+            typeOfData: "file"
+          StoredAsSubDirectories: false
+        Retention: 0
+        Name: "population"
+
+  BusinessGlueTable:
+    Type: "AWS::Glue::Table"
+    Properties:
+      DatabaseName: !Ref GlueDatabase
+      CatalogId: !Ref "AWS::AccountId"
+      TableInput:
+        Owner: "owner"
+        TableType: "EXTERNAL_TABLE"
+        Parameters:
+          "skip.header.line.count": "1"
+          compressionType: "none"
+          classification: "csv"
+          columnsOrdered: "true"
+          areColumnsQuoted: "true"
+          delimiter: ","
+          typeOfData: "file"
+        StorageDescriptor:
+          Columns:
+            - Name: "name"
+              Type: "string"
+            - Name: "city"
+              Type: "string"
+            - Name: "state"
+              Type: "string"
+            - Name: "zipcode"
+              Type: "string"
+          Location: !Sub "s3://${DataS3Bucket}/${BusinessSlug}/"
+          InputFormat: "org.apache.hadoop.mapred.TextInputFormat"
+          OutputFormat: "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+          Compressed: false
+          NumberOfBuckets: -1
+          SerdeInfo:
+            SerializationLibrary: "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+            Parameters:
+              quoteChar: '"'
+              separatorChar: ","
+          Parameters:
+            "skip.header.line.count": "1"
+            compressionType: "none"
+            classification: "csv"
+            columnsOrdered: "true"
+            areColumnsQuoted: "true"
+            delimiter: ","
+            typeOfData: "file"
+          StoredAsSubDirectories: false
+        Retention: 0
+        Name: !Ref BusinessSlug

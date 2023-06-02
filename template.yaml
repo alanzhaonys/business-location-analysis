@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  AppName:
+    Type: String
+    Default: "nail-salon-location-analysis"
+    Description: >-
+      The appplication name. This will become the Glue database and QuickSight analysis ID.
+
+  AppLongName:
+    Type: String
+    Default: "Nail Salon Location Analysis"
+    Description: >-
+      The user friendly application name. This will become the QuickSight analysis and dashboard names.
+
+  BusinessNameSingular:
+    Type: String
+    Default: "Nail Salon"
+    Description: >-
+      Business name in sigular notion. This will show up in the QuickSight report.
+
+  BusinessNamePlural:
+    Type: String
+    Default: "Nail Salons"
+    Description: >-
+      Business name is plural notion. This will show up in the QuickSight report.
+
+  BusinessSlug:
+    Type: String
+    Default: "nailsalons"
+    Description: >-
+      A slug for the business in plural notion. This should matches the data directory at `/data/nailsalons`.
+
+  DataS3Bucket:
+    Type: String
+    Default: "your-data-bucket"
+    Description: >-
+      The S3 bucket to hold the raw data at `s3://your-data-bucket`.
+
+  QuickSightArn:
+    Type: String
+    Default: "your-quicksight-arn"
+    Description: >-
+      The QuickSight ARN. You will need to have QuickSight Enterprise subscription.
+      Use this command to find out the ARN: 
+        aws quicksight list-users --region <aws-region> --aws-account-id <account-id> --namespace <namespace-name>
+
+Resources:
+  DataSourceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./nested/datasource.yaml
+      Parameters:
+        AppName: !Ref AppName
+        BusinessSlug: !Ref BusinessSlug
+        DataS3Bucket: !Ref DataS3Bucket
+
+  QuickSightStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: DataSourceStack
+    Properties:
+      TemplateURL: ./nested/quicksight.yaml
+      Parameters:
+        AppName: !Ref AppName
+        AppLongName: !Ref AppLongName
+        BusinessNameSingular: !Ref BusinessNameSingular
+        BusinessNamePlural: !Ref BusinessNamePlural
+        BusinessSlug: !Ref BusinessSlug
+        QuickSightArn: !Ref QuickSightArn
