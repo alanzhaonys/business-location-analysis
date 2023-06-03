@@ -17,8 +17,10 @@ The goal is to give an introduction to BI report automation using QuickSight and
 
 __The goal IS NOT to tell you that [Chappaqua, NY](https://www.google.com/search?q=chappaqua%2C+new+york) is a great location to start your nail salon business.__
 
+If this still interests you, please read on.
+
 ### Prerequisites
-- AWS skills
+- General AWS skills and understanding of QuickSight and CloudFormation
 - QuickSight Enterprise edition access
 
 ### Disclaimers
@@ -159,7 +161,7 @@ Analysis definitions hold the information about fields, filters, parameters and 
 
 Take a look at the `QuickSight::Definition` use in this article [here](https://github.com/alanzhaonys/business-location-analysis/blob/257400aa6145d7f10d53bbd7d647ad5a39406a82/nested/quicksight.yaml#L958).
 
-#### Derive from a maually created analysis
+#### Derive from a manually created analysis
 1. Create a template from the base analysis using [create-template](https://docs.aws.amazon.com/cli/latest/reference/quicksight/create-template.html) CLI. There is no option to do it from the console
 2. [Create all the data sets with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-dataset.html)
 3. Get the new template's ARN from the step 1 CLI command result. [Create a new template with CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-template.html) and specify the ARN as the `SourceEntity::SourceTemplate::Arn`
@@ -169,7 +171,7 @@ Take a look at the `QuickSight::Definition` use in this article [here](https://g
 5. Finally, [create the dashboard from the new template using CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-quicksight-dashboard.html)
    1. Map the data set placeholder name of the __base template__ to the new data set
 
-__OMG! There are lots of hoops through which you have to go. I hope AWS can make it easier, for example, convert existing analysis into CloudFormation template with a click of button.__ One of the caveats of using second method is that you always have to keep the base analysis and template because that's where derived analyses get the information like fields, filters, parameters, and layouts from.
+__OMG! There are lots of hoops which you have to go through. I hope AWS can make it easier, for example, convert existing analysis into CloudFormation template with a click of button.__ One of the caveats of using second method is that you always have to keep the base analysis and template because that's where derived analyses get the information like fields, filters, parameters, and layouts from.
 
 ### Feedback
 Please reach out to me directly on the platform if you have any feedback.
